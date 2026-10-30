@@ -570,6 +570,7 @@ pub(super) fn emit_binary_insn(
         }
         ast::Operator::Add => {
             program.emit_insn(Insn::Add {
+                user_expression: true,
                 lhs,
                 rhs,
                 dest: target_register,
@@ -577,6 +578,7 @@ pub(super) fn emit_binary_insn(
         }
         ast::Operator::Subtract => {
             program.emit_insn(Insn::Subtract {
+                user_expression: true,
                 lhs,
                 rhs,
                 dest: target_register,
@@ -584,6 +586,7 @@ pub(super) fn emit_binary_insn(
         }
         ast::Operator::Multiply => {
             program.emit_insn(Insn::Multiply {
+                user_expression: true,
                 lhs,
                 rhs,
                 dest: target_register,
@@ -591,6 +594,7 @@ pub(super) fn emit_binary_insn(
         }
         ast::Operator::Divide => {
             program.emit_insn(Insn::Divide {
+                user_expression: true,
                 lhs,
                 rhs,
                 dest: target_register,
@@ -894,6 +898,7 @@ pub(super) fn emit_binary_condition_insn(
         }
         ast::Operator::Add => {
             program.emit_insn(Insn::Add {
+                user_expression: true,
                 lhs,
                 rhs,
                 dest: target_register,
@@ -902,6 +907,7 @@ pub(super) fn emit_binary_condition_insn(
         }
         ast::Operator::Subtract => {
             program.emit_insn(Insn::Subtract {
+                user_expression: true,
                 lhs,
                 rhs,
                 dest: target_register,
@@ -910,6 +916,7 @@ pub(super) fn emit_binary_condition_insn(
         }
         ast::Operator::Multiply => {
             program.emit_insn(Insn::Multiply {
+                user_expression: true,
                 lhs,
                 rhs,
                 dest: target_register,
@@ -918,6 +925,7 @@ pub(super) fn emit_binary_condition_insn(
         }
         ast::Operator::Divide => {
             program.emit_insn(Insn::Divide {
+                user_expression: true,
                 lhs,
                 rhs,
                 dest: target_register,

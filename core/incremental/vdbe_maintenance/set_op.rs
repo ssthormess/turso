@@ -286,12 +286,14 @@ fn emit_split_view_rowid(
 ) {
     if both_tables {
         program.emit_insn(Insn::Multiply {
+            user_expression: false,
             lhs: srid_reg,
             rhs: two_reg,
             dest: dst,
         });
         if append {
             program.emit_insn(Insn::Add {
+                user_expression: false,
                 lhs: dst,
                 rhs: one_reg,
                 dest: dst,
@@ -614,6 +616,7 @@ fn emit_deduplicating_set_op(
             v_old_reg,
         );
         program.emit_insn(Insn::Add {
+            user_expression: false,
             lhs: w_reg,
             rhs: cnt_start + b,
             dest: cnt_start + b,
@@ -936,6 +939,7 @@ fn emit_deduplicating_set_op(
             default: None,
         });
         program.emit_insn(Insn::Add {
+            user_expression: false,
             lhs: w_reg,
             rhs: cur_w_reg,
             dest: new_w_reg,

@@ -455,6 +455,7 @@ fn emit_join_phase(
     program.emit_int(if negate { -1 } else { 1 }, w_reg);
     for w in delta_w_regs.iter().flatten() {
         program.emit_insn(Insn::Multiply {
+            user_expression: false,
             lhs: w_reg,
             rhs: *w,
             dest: w_reg,
@@ -462,6 +463,7 @@ fn emit_join_phase(
     }
     for count in arrangement_count_regs.iter().flatten() {
         program.emit_insn(Insn::Multiply {
+            user_expression: false,
             lhs: w_reg,
             rhs: *count,
             dest: w_reg,
@@ -1046,11 +1048,13 @@ pub(super) fn emit_semi_or_anti_join(
     }
     program.preassign_label_to_next_insn(counted);
     program.emit_insn(Insn::Add {
+        user_expression: false,
         lhs: present_reg,
         rhs: sums_start,
         dest: present_reg,
     });
     program.emit_insn(Insn::Add {
+        user_expression: false,
         lhs: matches_reg,
         rhs: sums_start + 1,
         dest: matches_reg,
@@ -1123,6 +1127,7 @@ pub(super) fn emit_semi_or_anti_join(
         jump_if_null: false,
     });
     program.emit_insn(Insn::Subtract {
+        user_expression: false,
         lhs: zero_reg,
         rhs: published_reg,
         dest: retract_weight_reg,
@@ -1283,11 +1288,13 @@ fn emit_add_change_subroutine(
     }
     program.preassign_label_to_next_insn(add);
     program.emit_insn(Insn::Add {
+        user_expression: false,
         lhs: sums_start,
         rhs: present_change_reg,
         dest: sums_start,
     });
     program.emit_insn(Insn::Add {
+        user_expression: false,
         lhs: sums_start + 1,
         rhs: matches_change_reg,
         dest: sums_start + 1,

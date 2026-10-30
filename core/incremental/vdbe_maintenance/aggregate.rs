@@ -1251,6 +1251,7 @@ fn emit_weighted_apply(
         });
     }
     program.emit_insn(Insn::Add {
+        user_expression: false,
         lhs: payload_start,
         rhs: weight_reg,
         dest: payload_start,

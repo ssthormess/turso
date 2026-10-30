@@ -229,6 +229,7 @@ fn emit_output_arrangement(
         default: None,
     });
     program.emit_insn(Insn::Add {
+        user_expression: false,
         lhs: contribution_reg,
         rhs: current_mult_reg,
         dest: new_mult_reg,

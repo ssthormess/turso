@@ -4,7 +4,7 @@
 // representation, handling the semantic differences between PostgreSQL and SQLite.
 
 use crate::sqlstate::{
-    SQLSTATE_FEATURE_NOT_SUPPORTED, SQLSTATE_INVALID_COLUMN_REFERENCE,
+    SQLSTATE_DUPLICATE_COLUMN, SQLSTATE_FEATURE_NOT_SUPPORTED, SQLSTATE_INVALID_COLUMN_REFERENCE,
     SQLSTATE_INVALID_ESCAPE_SEQUENCE, SQLSTATE_INVALID_SCHEMA_DEFINITION,
     SQLSTATE_INVALID_SCHEMA_NAME, SQLSTATE_INVALID_USE_OF_ESCAPE_CHARACTER,
     SQLSTATE_UNDEFINED_FUNCTION, SQLSTATE_UNDEFINED_TABLE,
@@ -352,10 +352,20 @@ impl PostgreSQLTranslator {
             }
         }
 
+        let mut column_names = std::collections::HashSet::new();
         for elt in &create.table_elts {
             let Some(ref inner) = elt.node else { continue };
             match inner {
                 Node::ColumnDef(col_def) => {
+                    if !column_names.insert(col_def.colname.clone()) {
+                        return Err(ParseError::Sqlstate {
+                            sqlstate: SQLSTATE_DUPLICATE_COLUMN,
+                            message: format!(
+                                "column \"{}\" specified more than once",
+                                col_def.colname
+                            ),
+                        });
+                    }
                     let col = self.translate_create_table_column(
                         col_def,
                         has_table_pk,
@@ -2998,6 +3008,24 @@ impl PostgreSQLTranslator {
                     return Err(not_supported("a type modifier in a cast"));
                 }
                 let type_name = pg_type_name_to_ast_type(pg_type_name)?;
+                let pg_type = object_name(&pg_type_name.names, is_default_schema, "type")?;
+                // Index expressions cannot call frontend functions, so index
+                // casts keep SQLite's lenient input handling.
+                let expr = match cast_input_check_type(&pg_type) {
+                    Some(label)
+                        if !self.translating_index.get()
+                            && pg_type_name.array_bounds.is_empty() =>
+                    {
+                        Box::new(function_call(
+                            "pg_cast_input",
+                            vec![
+                                *expr,
+                                ast::Expr::Literal(ast::Literal::String(format!("'{label}'"))),
+                            ],
+                        ))
+                    }
+                    _ => expr,
+                };
                 Ok(ast::Expr::Cast {
                     expr,
                     type_name: Some(type_name),
@@ -4260,7 +4288,7 @@ impl PostgreSQLTranslator {
 
         let exprs: Vec<Box<ast::Expr>> = group_clause
             .iter()
-            .map(|node| Ok(Box::new(self.translate_expr(node)?)))
+            .map(|node| Ok(Box::new(self.translate_sort_term(node)?)))
             .collect::<Result<Vec<_>, ParseError>>()?;
 
         let having = if let Some(having_node) = having_clause {
@@ -4750,6 +4778,28 @@ impl PostgreSQLTranslator {
         })))
     }
 
+    /// An ORDER BY or GROUP BY term. Collations are dropped everywhere
+    /// else, but a COLLATE around a constant keeps a no-op BINARY wrapper:
+    /// PostgreSQL reads the wrapped constant as an expression, while a bare
+    /// constant is a position or an error.
+    fn translate_sort_term(
+        &self,
+        node: &pg_query::protobuf::Node,
+    ) -> Result<ast::Expr, ParseError> {
+        use pg_query::protobuf::node::Node;
+        if let Some(Node::CollateClause(collate)) = &node.node {
+            if let Some(arg) = &collate.arg {
+                if matches!(&arg.node, Some(Node::AConst(_))) {
+                    return Ok(ast::Expr::Collate(
+                        Box::new(self.translate_expr(arg)?),
+                        ast::Name::exact("BINARY".to_string()),
+                    ));
+                }
+            }
+        }
+        self.translate_expr(node)
+    }
+
     fn translate_order_by(
         &self,
         sort_clause: &[pg_query::protobuf::Node],
@@ -4759,7 +4809,7 @@ impl PostgreSQLTranslator {
             match &node.node {
                 Some(pg_query::protobuf::node::Node::SortBy(sort_by)) => {
                     let expr = if let Some(ref sort_node) = sort_by.node {
-                        Box::new(self.translate_expr(sort_node)?)
+                        Box::new(self.translate_sort_term(sort_node)?)
                     } else {
                         return Err(ParseError::ParseError(
                             "Missing sort expression".to_string(),
@@ -6069,9 +6119,7 @@ fn pg_type_name_to_ast_type(
         "REAL" | "FLOAT4" | "DOUBLE PRECISION" | "FLOAT8" | "NUMERIC" | "DECIMAL" | "MONEY" => {
             "REAL"
         }
-        // For CAST expressions, map all text-like PG types to TEXT and
-        // boolean to INTEGER for SQLite VDBE compatibility
-        "BOOLEAN" | "BOOL" => "INTEGER",
+        "BOOLEAN" | "BOOL" => "boolean",
         "DATE" => "date",
         "TIME" | "TIMETZ" => "time",
         "TIMESTAMP" => "timestamp",
@@ -6089,6 +6137,22 @@ fn pg_type_name_to_ast_type(
         size: None,
         array_dimensions: type_name.array_bounds.len() as u32,
     })
+}
+
+/// The PostgreSQL name of a cast target whose input the frontend's
+/// pg_cast_input function validates before the lenient SQLite CAST runs.
+fn cast_input_check_type(pg_type: &str) -> Option<&'static str> {
+    match pg_type.to_uppercase().as_str() {
+        "INT2" | "SMALLINT" => Some("smallint"),
+        "INT4" | "INT" | "INTEGER" => Some("integer"),
+        "INT8" | "BIGINT" => Some("bigint"),
+        "FLOAT4" | "REAL" => Some("real"),
+        "FLOAT8" | "DOUBLE PRECISION" => Some("double precision"),
+        "NUMERIC" | "DECIMAL" => Some("numeric"),
+        "JSON" => Some("json"),
+        "JSONB" => Some("jsonb"),
+        _ => None,
+    }
 }
 
 fn extract_type_name_from_typename(

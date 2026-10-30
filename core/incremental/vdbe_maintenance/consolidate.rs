@@ -196,6 +196,7 @@ pub(super) fn consolidate_delta(
         default: None,
     });
     program.emit_insn(Insn::Add {
+        user_expression: false,
         lhs: group_weight_reg,
         rhs: weight_reg,
         dest: group_weight_reg,

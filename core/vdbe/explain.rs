@@ -104,7 +104,7 @@ pub fn insn_to_row(
                 0,
                 format!("Start at {}", target_pc.as_debug_int()),
             ),
-            Insn::Add { lhs, rhs, dest } => (
+            Insn::Add { lhs, rhs, dest, .. } => (
                 "Add",
                 *lhs as i64,
                 *rhs as i64,
@@ -113,7 +113,7 @@ pub fn insn_to_row(
                 0,
                 format!("r[{dest}]=r[{lhs}]+r[{rhs}]"),
             ),
-            Insn::Subtract { lhs, rhs, dest } => (
+            Insn::Subtract { lhs, rhs, dest, .. } => (
                 "Subtract",
                 *lhs as i64,
                 *rhs as i64,
@@ -122,7 +122,7 @@ pub fn insn_to_row(
                 0,
                 format!("r[{dest}]=r[{lhs}]-r[{rhs}]"),
             ),
-            Insn::Multiply { lhs, rhs, dest } => (
+            Insn::Multiply { lhs, rhs, dest, .. } => (
                 "Multiply",
                 *lhs as i64,
                 *rhs as i64,
@@ -131,7 +131,7 @@ pub fn insn_to_row(
                 0,
                 format!("r[{dest}]=r[{lhs}]*r[{rhs}]"),
             ),
-            Insn::Divide { lhs, rhs, dest } => (
+            Insn::Divide { lhs, rhs, dest, .. } => (
                 "Divide",
                 *lhs as i64,
                 *rhs as i64,

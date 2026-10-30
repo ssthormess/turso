@@ -711,18 +711,27 @@ pub enum Insn {
     },
     /// Add two registers and store the result in a third register.
     Add {
+        /// True for arithmetic the user wrote; engine-generated
+        /// arithmetic keeps SQLite's widening on integer overflow.
+        user_expression: bool,
         lhs: usize,
         rhs: usize,
         dest: usize,
     },
     /// Subtract rhs from lhs and store in dest
     Subtract {
+        /// True for arithmetic the user wrote; engine-generated
+        /// arithmetic keeps SQLite's widening on integer overflow.
+        user_expression: bool,
         lhs: usize,
         rhs: usize,
         dest: usize,
     },
     /// Multiply two registers and store the result in a third register.
     Multiply {
+        /// True for arithmetic the user wrote; engine-generated
+        /// arithmetic keeps SQLite's widening on integer overflow.
+        user_expression: bool,
         lhs: usize,
         rhs: usize,
         dest: usize,
@@ -739,6 +748,9 @@ pub enum Insn {
     },
     /// Divide lhs by rhs and store the result in a third register.
     Divide {
+        /// True for arithmetic the user wrote; engine-generated
+        /// arithmetic keeps SQLite's widening on integer overflow.
+        user_expression: bool,
         lhs: usize,
         rhs: usize,
         dest: usize,

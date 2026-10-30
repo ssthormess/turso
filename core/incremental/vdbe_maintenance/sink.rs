@@ -182,6 +182,7 @@ pub(super) fn emit_terminal_delta(
 
     program.preassign_label_to_next_insn(merge_label);
     program.emit_insn(Insn::Add {
+        user_expression: false,
         lhs: weight_reg,
         rhs: current_weight_reg,
         dest: new_weight_reg,

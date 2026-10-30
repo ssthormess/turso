@@ -239,6 +239,7 @@ pub(super) fn emit_add_to_member(
 
     program.preassign_label_to_next_insn(write_label);
     program.emit_insn(Insn::Add {
+        user_expression: false,
         lhs: old_count_reg,
         rhs: weight_reg,
         dest: new_count_reg,

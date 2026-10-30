@@ -1613,6 +1613,7 @@ impl EmitWindow {
                 (registers.start_offset_reg, registers.end_offset_reg)
             {
                 program.emit_insn(Insn::Subtract {
+                    user_expression: false,
                     lhs: end_offset_reg,
                     rhs: start_offset_reg,
                     dest: start_offset_reg,
@@ -2665,12 +2666,14 @@ fn emit_window_range_test(
         emit_operator_call_on_registers(program, call, &[reg1, offset_reg], reg1, resolver)?;
     } else if subtract {
         program.emit_insn(Insn::Subtract {
+            user_expression: false,
             lhs: reg1,
             rhs: offset_reg,
             dest: reg1,
         });
     } else {
         program.emit_insn(Insn::Add {
+            user_expression: false,
             lhs: reg1,
             rhs: offset_reg,
             dest: reg1,
@@ -3523,12 +3526,14 @@ fn emit_lag_lead_lookup(
             // is the lhs in both cases.
             if is_lead {
                 program.emit_insn(Insn::Add {
+                    user_expression: false,
                     lhs: tmp_reg,
                     rhs: offset_reg,
                     dest: tmp_reg,
                 });
             } else {
                 program.emit_insn(Insn::Subtract {
+                    user_expression: false,
                     lhs: tmp_reg,
                     rhs: offset_reg,
                     dest: tmp_reg,
@@ -3681,6 +3686,7 @@ fn emit_first_value_nth_value_lookup(
             .frame_counters
             .expect("frame_counters must exist when a window contains first_value/nth_value");
         program.emit_insn(Insn::Add {
+            user_expression: false,
             lhs: target_reg,
             rhs: frame_counters,
             dest: target_reg,
