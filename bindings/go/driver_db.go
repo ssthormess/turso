@@ -55,6 +55,7 @@ type tursoDbRows struct {
 	stmt      TursoStatement
 	columns   []string
 	decltypes []string
+	lifecycle bool // the query is a transaction boundary statement
 
 	closed bool
 	err    error
@@ -269,7 +270,7 @@ func (c *tursoDbConnection) ExecContext(ctx context.Context, query string, args 
 		_ = turso_statement_finalize(stmt)
 		turso_statement_deinit(stmt)
 		if err != nil {
-			c.noteTxErrorLocked(err)
+			c.noteTxErrorLocked(isTxLifecycle(rest), err)
 			return nil, err
 		}
 		c.inTx = !turso_connection_get_autocommit(c.conn)
@@ -313,8 +314,9 @@ func (c *tursoDbConnection) QueryContext(ctx context.Context, query string, args
 	}
 	// Return rows wrapper; do not step yet, leave cursor before first row
 	return &tursoDbRows{
-		conn: c,
-		stmt: stmt,
+		conn:      c,
+		stmt:      stmt,
+		lifecycle: isTxLifecycle(query),
 	}, nil
 }
 
@@ -353,19 +355,24 @@ func (c *tursoDbConnection) takeTxError() error {
 }
 
 // noteTxErrorLocked records when a statement error left the engine in
-// autocommit mode, meaning it rolled back the open transaction. Callers must
-// hold c.mu.
-func (c *tursoDbConnection) noteTxErrorLocked(err error) {
-	if c.inTx && turso_connection_get_autocommit(c.conn) {
-		c.inTx = false
+// autocommit mode, meaning it rolled back the open transaction. A failed
+// boundary statement (e.g. COMMIT) does not count: its error already reached
+// the caller, so recording it would only poison later autocommit work.
+// Callers must hold c.mu.
+func (c *tursoDbConnection) noteTxErrorLocked(lifecycle bool, err error) {
+	if !c.inTx || !turso_connection_get_autocommit(c.conn) {
+		return
+	}
+	c.inTx = false
+	if !lifecycle {
 		c.txErr = err
 	}
 }
 
-func (c *tursoDbConnection) noteTxError(err error) {
+func (c *tursoDbConnection) noteTxError(lifecycle bool, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.noteTxErrorLocked(err)
+	c.noteTxErrorLocked(lifecycle, err)
 }
 
 // isTxLifecycle reports whether query starts with a transaction statement.
@@ -587,7 +594,7 @@ func (r *tursoDbRows) Next(dest []driver.Value) error {
 	for {
 		status, err := turso_statement_step(r.stmt)
 		if err != nil {
-			r.conn.noteTxError(err)
+			r.conn.noteTxError(r.lifecycle, err)
 			r.err = err
 			return err
 		}
@@ -637,7 +644,7 @@ func (r *tursoDbRows) Next(dest []driver.Value) error {
 				}
 			}
 			if err := turso_statement_run_io(r.stmt); err != nil {
-				r.conn.noteTxError(err)
+				r.conn.noteTxError(r.lifecycle, err)
 				r.err = err
 				return err
 			}

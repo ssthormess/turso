@@ -2034,3 +2034,45 @@ func TestStatementsFailAfterEngineRollback(t *testing.T) {
 	_, err = connA.ExecContext(ctx, "COMMIT")
 	require.NoError(t, err)
 }
+
+// A COMMIT that fails after the engine already dropped the transaction
+// reports its error to the caller directly. It must not be recorded as a
+// hidden rollback error, or every later autocommit statement on the
+// connection would keep failing with the stale COMMIT error.
+func TestFailedCommitDoesNotPoisonConnection(t *testing.T) {
+	ctx := context.Background()
+	db := openMem(t)
+
+	connB, err := db.Conn(ctx)
+	require.NoError(t, err)
+	defer connB.Close()
+
+	_, err = connB.ExecContext(ctx, "CREATE TABLE t (id INTEGER PRIMARY KEY, v INTEGER)")
+	require.NoError(t, err)
+	_, err = connB.ExecContext(ctx, "BEGIN")
+	require.NoError(t, err)
+
+	// Drop the transaction outside the driver's bookkeeping so the engine
+	// is back in autocommit while the driver still thinks it is open, the
+	// same state a commit-time engine rollback produces.
+	err = connB.Raw(func(dc any) error {
+		c := dc.(*tursoDbConnection)
+		stmt, err := turso_connection_prepare_single(c.conn, "ROLLBACK")
+		if err != nil {
+			return err
+		}
+		_, err = turso_statement_step(stmt)
+		_ = turso_statement_finalize(stmt)
+		turso_statement_deinit(stmt)
+		return err
+	})
+	require.NoError(t, err)
+
+	_, err = connB.ExecContext(ctx, "COMMIT")
+	require.Error(t, err)
+
+	// The connection is back in autocommit; new statements must run, not
+	// fail with the stale COMMIT error.
+	_, err = connB.ExecContext(ctx, "INSERT INTO t VALUES (1, 1)")
+	require.NoError(t, err)
+}
