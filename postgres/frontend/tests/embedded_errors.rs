@@ -370,6 +370,8 @@ fn lookup_and_input_errors_report_postgres_sqlstates() {
         ("SELECT set_config('a..b', 'x', false)", "42602"),
         ("SELECT current_setting('a..b')", "42704"),
         ("INSERT INTO t VALUES ('not json')", "22P02"),
+        ("SELECT 'q'::nosuch", "42704"),
+        ("SELECT 'q'::nosuch[]", "42704"),
         ("SELECT * FROM nosuchschema.t", "42P01"),
         ("INSERT INTO nosuchschema.t VALUES ('{}')", "42P01"),
         ("UPDATE nosuchschema.t SET j = '{}'", "42P01"),

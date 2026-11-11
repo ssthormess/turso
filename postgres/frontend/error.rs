@@ -318,7 +318,9 @@ fn parse_error_sqlstate(msg: &str) -> &'static str {
         && msg.ends_with("\" does not exist")
     {
         SQLSTATE_UNDEFINED_TABLE
-    } else if msg.starts_with("role \"") && msg.ends_with("\" does not exist") {
+    } else if (msg.starts_with("role \"") || msg.starts_with("type \""))
+        && msg.ends_with("\" does not exist")
+    {
         SQLSTATE_UNDEFINED_OBJECT
     } else if msg.starts_with('"')
         && (msg.contains("\" is not a") || msg.ends_with("\" is an index"))

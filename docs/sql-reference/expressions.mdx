@@ -164,6 +164,8 @@ SELECT CAST('abc' AS INTEGER);   -- 0
 SELECT CAST(NULL AS INTEGER);    -- NULL
 ```
 
+A `type-name` that names no type at all casts with the affinity its text gives, as in SQLite, so `CAST('abc' AS nosuch)` is `0`. Through the PostgreSQL frontend the type must exist: `SELECT 'abc'::nosuch` raises `type "nosuch" does not exist` (SQLSTATE 42704), as PostgreSQL does.
+
 <Info>
 **Turso Extension**: In STRICT tables with custom types, `CAST(value AS custom_type)` applies the custom type's ENCODE function. See [CREATE TYPE](/docs/sql-reference/statements/create-type) for details.
 </Info>

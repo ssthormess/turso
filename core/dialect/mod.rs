@@ -525,6 +525,15 @@ pub trait Dialect: Send + Sync + 'static {
         false
     }
 
+    /// Whether a cast to a type name the schema does not know raises an
+    /// error.
+    ///
+    /// PostgreSQL reports `type "name" does not exist`. SQLite casts with
+    /// the affinity the name's text gives, so `CAST('q' AS nosuch)` is 0.
+    fn errors_on_cast_to_unknown_type(&self) -> bool {
+        false
+    }
+
     /// Whether constraint errors report the values that broke the constraint.
     ///
     /// PostgreSQL shows them in the error DETAIL, so custom type and array

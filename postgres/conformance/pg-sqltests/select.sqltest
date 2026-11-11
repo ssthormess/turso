@@ -252,6 +252,22 @@ expect {
     1!
 }
 
+test select-cast-to-unknown-type-errors {
+    SELECT 'q'::nosuch;
+}
+@sqlstate 42704
+expect error {
+    type "nosuch" does not exist
+}
+
+test select-cast-to-unknown-array-type-errors {
+    SELECT 'q'::nosuch[];
+}
+@sqlstate 42704
+expect error {
+    type "nosuch\[\]" does not exist
+}
+
 test select-cast-to-enum {
     CREATE TYPE mood AS ENUM ('sad', 'happy');
     SELECT 'happy'::mood, CAST('sad' AS mood);

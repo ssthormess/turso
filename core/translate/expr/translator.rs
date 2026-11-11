@@ -822,6 +822,18 @@ fn translate_cast_expr(
 
     let cast_type_name = type_name.as_ref().map(|tn| crate::util::dequote(&tn.name));
 
+    // A dialect that rejects unknown cast types reports the name here, where
+    // SQLite would instead apply the affinity the name's text gives.
+    if let (Some(tn), Some(name)) = (type_name, &cast_type_name) {
+        if resolver.catalog.dialect.errors_on_cast_to_unknown_type()
+            && resolver.schema().get_type_def_unchecked(name).is_none()
+            && StrictType::named(name).is_none()
+        {
+            let brackets = "[]".repeat(tn.array_dimensions as usize);
+            crate::bail_parse_error!("type \"{name}{brackets}\" does not exist");
+        }
+    }
+
     if let (Some(tn), Some(cast_type_name)) = (type_name, &cast_type_name) {
         if tn.array_dimensions > 0 {
             resolver.schema().check_array_element_type(cast_type_name)?;
